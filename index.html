@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Memories Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .file-input-container {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .file-input-container:hover {
+            border-color: #764ba2;
+            background-color: #f8f9ff;
+        }
+
+        .file-input-container.dragover {
+            border-color: #764ba2;
+            background-color: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .upload-note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .upload-note p {
+            margin: 0;
+            color: #495057;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .loading-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading-text {
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .memories-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .memories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .memory-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid #e1e5e9;
+        }
+
+        .memory-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .memory-card.no-image {
+            padding: 15px;
+        }
+        
+        .memory-card.no-image .memory-header {
+            margin-bottom: 10px;
+        }
+        
+        .memory-card.no-image .memory-content {
+            margin-top: 10px;
+        }
+
+        .memory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .memory-date {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .memory-type {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .memory-type.photo {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .memory-type.video {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .memory-type.checkin {
+            background: #e8f5e8;
+            color: #388e3c;
+        }
+
+        .memory-type.post {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .memory-image {
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .memory-image img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+
+        .memory-content {
+            margin-top: 15px;
+        }
+
+        .memory-text {
+            color: #495057;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .error-section {
+            background: #fee;
+            border: 2px solid #fcc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #c33;
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .filter-btn {
+            margin: 0 5px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .custom-date-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .custom-date-inputs input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .custom-date-inputs button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .custom-date-inputs button:hover {
+            background: #0056b3;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                flex-direction: column;
+            }
+            
+            .stats {
+                justify-content: center;
+            }
+            
+            .memories-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .custom-date-inputs {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-btn {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Facebook Memories Viewer</h1>
+            <p>View your Facebook memories offline from your archive</p>
+        </div>
+
+        <div class="upload-section" id="upload-section">
+            <h2>Select Your Facebook Posts File</h2>
+            <p>Choose the file containing all your posts, check-ins, photos and videos</p>
+            <div class="file-input-container" id="file-input-container">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to select or drag & drop</div>
+                <div class="upload-subtext">Select your_posts__check_ins__photos_and_videos_1.html from your archive</div>
+            </div>
+            <input type="file" id="file-input" class="file-input" accept=".html,.htm">
+            <div class="upload-note">
+                <p><strong>Note:</strong> This file contains all your Facebook posts. For images to display properly, make sure this HTML file is in the same folder as your Facebook archive.</p>
+            </div>
+        </div>
+
+        <div class="loading-section" id="loading-section">
+            <h2>Processing Your Archive...</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="loading-text" id="loading-text">Reading archive index...</div>
+        </div>
+
+        <div class="memories-section" id="memories-section">
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="type-filter">Type:</label>
+                    <select id="type-filter">
+                        <option value="">All Types</option>
+                        <option value="photo">Photos</option>
+                        <option value="video">Videos</option>
+                        <option value="checkin">Check-ins</option>
+                        <option value="post">Posts</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="search-filter">Search:</label>
+                    <input type="text" id="search-filter" placeholder="Search memories...">
+                </div>
+                <div class="filter-group">
+                    <button class="btn filter-btn" id="today-btn">Today</button>
+                    <button class="btn filter-btn" id="month-btn">This Month</button>
+                    <button class="btn filter-btn" id="custom-btn">Custom Dates</button>
+                </div>
+                <button class="btn" onclick="resetFilters()">Reset Filters</button>
+            </div>
+            
+            <div class="custom-date-inputs" id="custom-date-inputs" style="display: none;">
+                <label>From:</label>
+                <input type="date" id="start-date">
+                <label>To:</label>
+                <input type="date" id="end-date">
+                <button onclick="applyCustomDateFilter()">Apply</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="total-memories">0</div>
+                    <div class="stat-label">Total Memories</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="photos-count">0</div>
+                    <div class="stat-label">Photos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="videos-count">0</div>
+                    <div class="stat-label">Videos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="posts-count">0</div>
+                    <div class="stat-label">Posts</div>
+                </div>
+            </div>
+
+            <div class="memories-grid" id="memories-grid"></div>
+        </div>
+
+        <div class="error-section" id="error-section">
+            <h2>Error</h2>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        class FacebookMemoriesViewer {
+            constructor() {
+                this.memories = [];
+                this.filteredMemories = [];
+                this.currentFilter = 'all';
+                this.currentSearch = '';
+                
+                // UI elements
+                this.fileInput = document.getElementById('file-input');
+                this.fileInputContainer = document.getElementById('file-input-container');
+                this.uploadSection = document.getElementById('upload-section');
+                this.loadingSection = document.getElementById('loading-section');
+                this.memoriesSection = document.getElementById('memories-section');
+                this.errorSection = document.getElementById('error-section');
+                this.memoriesGrid = document.getElementById('memories-grid');
+                this.progressFill = document.getElementById('progress-fill');
+                this.loadingText = document.getElementById('loading-text');
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Event listeners
+                this.fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.processFile(file);
+                    }
+                });
+
+                this.fileInputContainer.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.fileInputContainer.classList.add('dragover');
+                });
+
+                this.fileInputContainer.addEventListener('dragleave', () => {
+                    this.fileInputContainer.classList.remove('dragover');
+                });
+
+                this.fileInputContainer.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.fileInputContainer.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                        this.processFile(file);
+                    }
+                });
+
+                this.fileInputContainer.addEventListener('click', () => {
+                    this.fileInput.click();
+                });
+
+                // Filter event listeners
+                document.getElementById('type-filter').addEventListener('change', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('search-filter').addEventListener('input', () => {
+                    this.applyFilters();
+                });
+
+                // Date filter buttons
+                document.getElementById('today-btn').addEventListener('click', () => {
+                    this.filterByToday();
+                });
+
+                document.getElementById('month-btn').addEventListener('click', () => {
+                    this.filterByMonth();
+                });
+
+                document.getElementById('custom-btn').addEventListener('click', () => {
+                    this.toggleCustomDateInputs();
+                });
+            }
+
+            async processFile(file) {
+                if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
+                    this.showError('Please select an HTML file from your Facebook archive folder.');
+                    return;
+                }
+
+                try {
+                    this.showLoading('Reading posts file...');
+                    this.updateProgress(20);
+                    
+                    const content = await this.readFile(file);
+                    this.updateProgress(50);
+                    this.loadingText.textContent = 'Parsing posts data...';
+                    
+                    // Parse the posts file
+                    const posts = this.extractPostsFromDocument(content, file.name);
+                    this.memories = this.convertPostsToMemories(posts, file.name);
+                    this.filteredMemories = [...this.memories];
+                    
+                    this.updateProgress(100);
+                    this.showMemories();
+                    
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    this.showError(`Error processing archive: ${error.message}`);
+                }
+            }
+
+            readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+
+            extractBasePath(filePath) {
+                if (!filePath) return '';
+                const lastSlashIndex = filePath.lastIndexOf('/');
+                if (lastSlashIndex === -1) return '';
+                return filePath.substring(0, lastSlashIndex + 1);
+            }
+
+            extractPostsFromDocument(htmlContent, filename) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                const posts = [];
+
+                // Find all post containers using the _a6-g class
+                const postElements = doc.querySelectorAll('div._a6-g');
+                console.log(`Found ${postElements.length} post elements`);
+
+                postElements.forEach((element, index) => {
+                    try {
+                        // Extract date from _a72d class
+                        let dateElement = element.querySelector('div._a72d');
+                        let date = null;
+                        let rawDateText = '';
+
+                        if (dateElement) {
+                            rawDateText = dateElement.textContent.trim();
+                            date = this.parseDateFromText(rawDateText);
+                        }
+
+                        // If no date found, try to extract from parent elements
+                        if (!date) {
+                            date = this.extractDate(element, filename, '');
+                        }
+
+                        // Extract action text from _2ph_ _a6-h _a6-i class
+                        let actionText = '';
+                        const actionElement = element.querySelector('div._2ph_._a6-h._a6-i');
+                        if (actionElement) {
+                            actionText = actionElement.textContent.trim();
+                        }
+
+                        // Extract post content from _2pin class
+                        let postContent = '';
+                        const contentElements = element.querySelectorAll('div._2pin');
+                        contentElements.forEach(contentEl => {
+                            const text = contentEl.textContent.trim();
+                            if (text && text !== actionText) {
+                                postContent += (postContent ? ' ' : '') + text;
+                            }
+                        });
+
+                        // Combine action text and post content
+                        let fullText = '';
+                        if (actionText && postContent) {
+                            fullText = `${actionText}. ${postContent}`;
+                        } else if (actionText) {
+                            fullText = actionText;
+                        } else if (postContent) {
+                            fullText = postContent;
+                        }
+
+                        // Extract image paths
+                        const imagePaths = [];
+                        const images = element.querySelectorAll('img');
+                        images.forEach(img => {
+                            const src = img.getAttribute('src');
+                            if (src && !src.startsWith('data:')) {
+                                imagePaths.push(src);
+                            }
+                        });
+
+                        if (date && fullText) {
+                            posts.push({
+                                date: date,
+                                text: fullText,
+                                imagePaths: imagePaths,
+                                rawDateText: rawDateText,
+                                element: element
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error processing post ${index}:`, error);
+                    }
+                });
+
+                console.log(`Successfully extracted ${posts.length} posts`);
+                return posts;
+            }
+
+            parseDateFromText(dateText) {
+                // Parse format like "Oct 09, 2015 6:53:02 am"
+                const regex = /(\w{3})\s+(\d{2}),\s+(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s+(am|pm)/i;
+                const match = dateText.match(regex);
+                
+                if (match) {
+                    const month = match[1];
+                    const day = parseInt(match[2]);
+                    const year = parseInt(match[3]);
+                    const hour = parseInt(match[4]);
+                    const minute = parseInt(match[5]);
+                    const second = parseInt(match[6]);
+                    const ampm = match[7].toLowerCase();
+                    
+                    const monthMap = {
+                        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+                        'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+                    };
+                    
+                    let adjustedHour = hour;
+                    if (ampm === 'pm' && hour !== 12) adjustedHour += 12;
+                    if (ampm === 'am' && hour === 12) adjustedHour = 0;
+                    
+                    return new Date(year, monthMap[month.toLowerCase()], day, adjustedHour, minute, second);
+                }
+                
+                return null;
+            }
+
+            extractDate(element, filename, text) {
+                const datePatterns = [
+                    /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+                    /(\d{1,2})-(\d{1,2})-(\d{4})/,
+                    /(\d{4})-(\d{1,2})-(\d{1,2})/,
+                    /(\w{3})\s+(\d{1,2}),?\s+(\d{4})/,
+                    /(\d{1,2})\s+(\w{3})\s+(\d{4})/,
+                    /(\d{1,2})\/(\d{1,2})\/(\d{2})/,
+                    /(\d{4})\/(\d{1,2})\/(\d{1,2})/
+                ];
+
+                let currentElement = element;
+                let date = null;
+
+                // Search through the element and its parents for dates
+                while (currentElement && !date) {
+                    const elementText = currentElement.textContent || '';
+                    
+                    for (const pattern of datePatterns) {
+                        const match = elementText.match(pattern);
+                        if (match) {
+                            let year, month, day;
+                            
+                            if (pattern.source.includes('\\d{4}')) {
+                                // Pattern has 4-digit year
+                                if (pattern.source.includes('\\w{3}')) {
+                                    // Month name format
+                                    const monthMap = {
+                                        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+                                        'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+                                    };
+                                    month = monthMap[match[1].toLowerCase()];
+                                    day = parseInt(match[2]);
+                                    year = parseInt(match[3]);
+                                } else {
+                                    // Numeric format
+                                    if (pattern.source.includes('\\d{4}.*\\d{1,2}.*\\d{1,2}')) {
+                                        // YYYY-MM-DD or YYYY/MM/DD
+                                        year = parseInt(match[1]);
+                                        month = parseInt(match[2]) - 1;
+                                        day = parseInt(match[3]);
+                                    } else {
+                                        // MM/DD/YYYY or MM-DD-YYYY
+                                        month = parseInt(match[1]) - 1;
+                                        day = parseInt(match[2]);
+                                        year = parseInt(match[3]);
+                                    }
+                                }
+                            } else {
+                                // Pattern has 2-digit year
+                                month = parseInt(match[1]) - 1;
+                                day = parseInt(match[2]);
+                                year = 2000 + parseInt(match[3]);
+                            }
+                            
+                            if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+                                date = new Date(year, month, day);
+                                if (date.getFullYear() > 2000 && date.getFullYear() < 2030) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    currentElement = currentElement.parentElement;
+                }
+
+                // If still no date, try to extract from filename
+                if (!date && filename) {
+                    const filenameMatch = filename.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                    if (filenameMatch) {
+                        const year = parseInt(filenameMatch[1]);
+                        const month = parseInt(filenameMatch[2]) - 1;
+                        const day = parseInt(filenameMatch[3]);
+                        date = new Date(year, month, day);
+                    }
+                }
+
+                // Fallback to a random past date if nothing else works
+                if (!date) {
+                    const now = new Date();
+                    const randomDaysAgo = Math.floor(Math.random() * 365 * 5); // Random date within last 5 years
+                    date = new Date(now.getTime() - (randomDaysAgo * 24 * 60 * 60 * 1000));
+                }
+
+                return date;
+            }
+
+            determineMemoryType(text) {
+                const lowerText = text.toLowerCase();
+                if (lowerText.includes('photo') || lowerText.includes('picture') || lowerText.includes('image')) {
+                    return 'photo';
+                } else if (lowerText.includes('video')) {
+                    return 'video';
+                } else if (lowerText.includes('check') || lowerText.includes('location')) {
+                    return 'checkin';
+                } else {
+                    return 'post';
+                }
+            }
+
+            convertPostsToMemories(posts, filename) {
+                return posts.map(post => {
+                    const memoryType = this.determineMemoryType(post.text);
+                    return {
+                        date: post.date,
+                        text: post.text,
+                        memoryType: memoryType,
+                        imagePaths: post.imagePaths,
+                        rawDateText: post.rawDateText
+                    };
+                });
+            }
+
+            createMemoryCard(memory) {
+                const card = document.createElement('div');
+                card.className = 'memory-card';
+                
+                let imageHtml = '';
+                if (memory.imagePaths && memory.imagePaths.length > 0) {
+                    // Try to use the first image path directly
+                    const imagePath = memory.imagePaths[0];
+                    imageHtml = `
+                        <div class="memory-image">
+                            <img src="${imagePath}" alt="Memory" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div class="image-placeholder" style="display: none;">📷 Image not found</div>
+                        </div>
+                    `;
+                } else {
+                    imageHtml = `
+                        <div class="memory-image">
+                            <div class="image-placeholder">📷 No image available</div>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = `
+                    <div class="memory-header">
+                        <div class="memory-date">${memory.date}</div>
+                        <div class="memory-type ${memory.memoryType}">${memory.memoryType}</div>
+                    </div>
+                    ${imageHtml}
+                    <div class="memory-content">
+                        <div class="memory-text">${memory.text}</div>
+                    </div>
+                `;
+                
+                return card;
+            }
+
+            showLoading(message) {
+                this.uploadSection.style.display = 'none';
+                this.loadingSection.style.display = 'block';
+                this.memoriesSection.style.display = 'none';
+                this.errorSection.style.display = 'none';
+                this.loadingText.textContent = message;
+            }
+
+            updateProgress(percentage) {
+                this.progressFill.style.width = percentage + '%';
+            }
+
+            showMemories() {
+                this.uploadSection.style.display = 'none';
+                this.loadingSection.style.display = 'none';
+                this.memoriesSection.style.display = 'block';
+                this.errorSection.style.display = 'none';
+
+                this.displayMemories();
+                this.updateStats();
+            }
+
+            showError(message) {
+                this.uploadSection.style.display = 'none';
+                this.loadingSection.style.display = 'none';
+                this.memoriesSection.style.display = 'none';
+                this.errorSection.style.display = 'block';
+                document.getElementById('error-message').textContent = message;
+            }
+
+            displayMemories() {
+                this.memoriesGrid.innerHTML = '';
+                this.filteredMemories.forEach(memory => {
+                    const card = this.createMemoryCard(memory);
+                    this.memoriesGrid.appendChild(card);
+                });
+            }
+
+            updateStats() {
+                const total = this.memories.length;
+                const filtered = this.filteredMemories.length;
+                const photos = this.filteredMemories.filter(m => m.memoryType === 'photo').length;
+                const videos = this.filteredMemories.filter(m => m.memoryType === 'video').length;
+                const posts = this.filteredMemories.filter(m => m.memoryType === 'post').length;
+
+                document.getElementById('total-memories').textContent = `${filtered} / ${total}`;
+                document.getElementById('photos-count').textContent = photos;
+                document.getElementById('videos-count').textContent = videos;
+                document.getElementById('posts-count').textContent = posts;
+            }
+
+            filterByToday() {
+                this.clearActiveFilters();
+                document.getElementById('today-btn').classList.add('active');
+                
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const currentDay = today.getDate();
+                
+                this.filteredMemories = this.memories.filter(memory => {
+                    try {
+                        const memoryDate = new Date(memory.rawDateText);
+                        return memoryDate.getMonth() === currentMonth && memoryDate.getDate() === currentDay;
+                    } catch (e) {
+                        return false;
+                    }
+                });
+                
+                this.displayMemories();
+                this.updateStats();
+            }
+
+            filterByMonth() {
+                this.clearActiveFilters();
+                document.getElementById('month-btn').classList.add('active');
+                
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                
+                this.filteredMemories = this.memories.filter(memory => {
+                    try {
+                        const memoryDate = new Date(memory.rawDateText);
+                        return memoryDate.getMonth() === currentMonth;
+                    } catch (e) {
+                        return false;
+                    }
+                });
+                
+                this.displayMemories();
+                this.updateStats();
+            }
+
+            toggleCustomDateInputs() {
+                const customInputs = document.getElementById('custom-date-inputs');
+                if (customInputs.style.display === 'none') {
+                    customInputs.style.display = 'flex';
+                    document.getElementById('custom-btn').classList.add('active');
+                } else {
+                    customInputs.style.display = 'none';
+                    document.getElementById('custom-btn').classList.remove('active');
+                }
+            }
+
+            clearActiveFilters() {
+                document.getElementById('today-btn').classList.remove('active');
+                document.getElementById('month-btn').classList.remove('active');
+                document.getElementById('custom-btn').classList.remove('active');
+                document.getElementById('custom-date-inputs').style.display = 'none';
+            }
+
+            applyFilters() {
+                const typeFilter = document.getElementById('type-filter').value;
+                const searchFilter = document.getElementById('search-filter').value.toLowerCase();
+
+                this.filteredMemories = this.memories.filter(memory => {
+                    const typeMatch = !typeFilter || memory.memoryType === typeFilter;
+                    const searchMatch = !searchFilter || 
+                        memory.text.toLowerCase().includes(searchFilter) ||
+                        memory.rawDateText.toLowerCase().includes(searchFilter);
+                    
+                    return typeMatch && searchMatch;
+                });
+
+                this.displayMemories();
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('type-filter').value = '';
+            document.getElementById('search-filter').value = '';
+            viewer.clearActiveFilters();
+            viewer.filteredMemories = [...viewer.memories];
+            viewer.displayMemories();
+        }
+
+        function applyCustomDateFilter() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            viewer.clearActiveFilters();
+            document.getElementById('custom-btn').classList.add('active');
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            viewer.filteredMemories = viewer.memories.filter(memory => {
+                try {
+                    const memoryDate = new Date(memory.rawDateText);
+                    return memoryDate >= start && memoryDate <= end;
+                } catch (e) {
+                    return false;
+                }
+            });
+            
+            viewer.displayMemories();
+            viewer.updateStats();
+        }
+
+        // Initialize the viewer
+        const viewer = new FacebookMemoriesViewer();
+    </script>
+</body>
+</html>
