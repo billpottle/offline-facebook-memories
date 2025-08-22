@@ -217,6 +217,8 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             border: 1px solid #e1e5e9;
+            overflow: hidden;
+            word-wrap: break-word;
         }
 
         .memory-card:hover {
@@ -290,6 +292,62 @@
             height: 200px;
             object-fit: cover;
             border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .memory-image img:hover {
+            transform: scale(1.02);
+        }
+
+        .video-preview {
+            position: relative;
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            pointer-events: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .video-preview:hover .video-play-overlay {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .video-placeholder:hover {
+            background: #e9ecef;
+        }
+
+        .clickable-video {
+            cursor: pointer;
         }
 
         .image-placeholder {
@@ -307,12 +365,79 @@
 
         .memory-content {
             margin-top: 15px;
+            overflow: hidden;
         }
 
         .memory-text {
             color: #495057;
             line-height: 1.6;
             font-size: 0.95rem;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .memory-text a {
+            color: #007bff;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-bottom-color 0.2s ease;
+        }
+
+        .memory-text a:hover {
+            border-bottom-color: #007bff;
+            text-decoration: underline;
+        }
+
+        .memory-text a:visited {
+            color: #6f42c1;
+        }
+
+        /* Image Modal Styles */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            width: 90%;
+            height: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 25px;
+            color: #f1f1f1;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #bbb;
+        }
+
+        #modal-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .error-section {
@@ -495,6 +620,14 @@
             <h2>Error</h2>
             <p id="error-message"></p>
         </div>
+
+        <!-- Image Modal -->
+        <div class="image-modal" id="image-modal">
+            <div class="modal-content">
+                <span class="close-btn" id="close-modal">&times;</span>
+                <img id="modal-image" src="" alt="Full size image">
+            </div>
+        </div>
     </div>
 
     <script>
@@ -515,6 +648,7 @@
                 this.memoriesGrid = document.getElementById('memories-grid');
                 this.progressFill = document.getElementById('progress-fill');
                 this.loadingText = document.getElementById('loading-text');
+                this.imageModal = document.getElementById('image-modal');
                 
                 this.setupEventListeners();
             }
@@ -625,6 +759,11 @@
                 // Find all post containers using the _a6-g class
                 const postElements = doc.querySelectorAll('div._a6-g');
                 console.log(`Found ${postElements.length} post elements`);
+                
+                // Log a sample of the HTML structure for debugging
+                if (postElements.length > 0) {
+                    console.log('Sample post HTML structure:', postElements[0].outerHTML.substring(0, 1000));
+                }
 
                 postElements.forEach((element, index) => {
                     try {
@@ -650,41 +789,112 @@
                             actionText = actionElement.textContent.trim();
                         }
 
-                        // Extract post content from _2pin class
+                        // Extract post content from _2pin class - preserve links but remove images
                         let postContent = '';
+                        let postHtml = '';
                         const contentElements = element.querySelectorAll('div._2pin');
                         contentElements.forEach(contentEl => {
                             const text = contentEl.textContent.trim();
                             if (text && text !== actionText) {
                                 postContent += (postContent ? ' ' : '') + text;
+                                
+                                // Get HTML but remove image tags to avoid duplicates
+                                let cleanHtml = contentEl.innerHTML.trim();
+                                // Remove img tags but keep other HTML like links
+                                cleanHtml = cleanHtml.replace(/<img[^>]*>/gi, '');
+                                // Remove empty div tags that might be left behind
+                                cleanHtml = cleanHtml.replace(/<div[^>]*><\/div>/gi, '');
+                                cleanHtml = cleanHtml.replace(/<div[^>]*>\s*<\/div>/gi, '');
+                                
+                                if (cleanHtml && cleanHtml !== actionText) {
+                                    postHtml += (postHtml ? ' ' : '') + cleanHtml;
+                                }
                             }
                         });
 
                         // Combine action text and post content
                         let fullText = '';
+                        let fullHtml = '';
                         if (actionText && postContent) {
                             fullText = `${actionText}. ${postContent}`;
+                            fullHtml = `${actionText}. ${postHtml}`;
                         } else if (actionText) {
                             fullText = actionText;
+                            fullHtml = actionText;
                         } else if (postContent) {
                             fullText = postContent;
+                            fullHtml = postHtml;
                         }
 
-                        // Extract image paths
+                        // Extract media paths (images and videos)
                         const imagePaths = [];
-                        const images = element.querySelectorAll('img');
-                        images.forEach(img => {
-                            const src = img.getAttribute('src');
-                            if (src && !src.startsWith('data:')) {
-                                imagePaths.push(src);
+                        const videoPaths = [];
+                        
+                        // Check for videos first
+                        const videos = element.querySelectorAll('video');
+                        console.log(`Post ${index}: Found ${videos.length} video elements`);
+                        
+                        // Also check for any video-related elements
+                        const videoLinks = element.querySelectorAll('a[href*=".mp4"], a[href*=".mov"], a[href*=".avi"], a[href*=".webm"]');
+                        console.log(`Post ${index}: Found ${videoLinks.length} video links`);
+                        
+                        if (videos.length > 0) {
+                            const firstVideo = videos[0];
+                            const videoSrc = firstVideo.getAttribute('src');
+                            console.log(`Post ${index}: Video src: ${videoSrc}`);
+                            
+                            if (videoSrc && !videoSrc.startsWith('data:')) {
+                                videoPaths.push(videoSrc);
+                                console.log(`Post ${index}: Added video path: ${videoSrc}`);
+                                
+                                // Try to get video poster/thumbnail
+                                const poster = firstVideo.getAttribute('poster');
+                                console.log(`Post ${index}: Video poster: ${poster}`);
+                                
+                                if (poster && !poster.startsWith('data:')) {
+                                    imagePaths.push(poster);
+                                    console.log(`Post ${index}: Added poster image: ${poster}`);
+                                }
                             }
-                        });
+                        } else if (videoLinks.length > 0) {
+                            // Handle video links if no video elements found
+                            const firstVideoLink = videoLinks[0];
+                            const videoHref = firstVideoLink.getAttribute('href');
+                            console.log(`Post ${index}: Video link href: ${videoHref}`);
+                            
+                            if (videoHref && !videoHref.startsWith('data:')) {
+                                videoPaths.push(videoHref);
+                                console.log(`Post ${index}: Added video path from link: ${videoHref}`);
+                            }
+                        }
+                        
+                        // If no video, get first image
+                        if (videoPaths.length === 0) {
+                            const images = element.querySelectorAll('img');
+                            console.log(`Post ${index}: Found ${images.length} image elements`);
+                            
+                            if (images.length > 0) {
+                                const firstImg = images[0];
+                                const src = firstImg.getAttribute('src');
+                                console.log(`Post ${index}: Image src: ${src}`);
+                                
+                                if (src && !src.startsWith('data:')) {
+                                    imagePaths.push(src);
+                                    console.log(`Post ${index}: Added image path: ${src}`);
+                                }
+                            }
+                        }
+                        
+                        console.log(`Post ${index}: Final imagePaths:`, imagePaths);
+                        console.log(`Post ${index}: Final videoPaths:`, videoPaths);
 
                         if (date && fullText) {
                             posts.push({
-                                date: date,
+                                date: this.formatDate(date),
                                 text: fullText,
+                                html: fullHtml,
                                 imagePaths: imagePaths,
+                                videoPaths: videoPaths,
                                 rawDateText: rawDateText,
                                 element: element
                             });
@@ -695,7 +905,31 @@
                 });
 
                 console.log(`Successfully extracted ${posts.length} posts`);
+                
+                // Log details about posts with videos
+                const postsWithVideos = posts.filter(post => post.videoPaths && post.videoPaths.length > 0);
+                console.log(`Posts with videos: ${postsWithVideos.length}`);
+                postsWithVideos.forEach((post, idx) => {
+                    console.log(`Video post ${idx}:`, {
+                        date: post.date,
+                        videoPaths: post.videoPaths,
+                        imagePaths: post.imagePaths
+                    });
+                });
+                
                 return posts;
+            }
+
+            formatDate(date) {
+                const options = { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                };
+                return date.toLocaleDateString('en-US', options);
             }
 
             parseDateFromText(dateText) {
@@ -830,12 +1064,20 @@
 
             convertPostsToMemories(posts, filename) {
                 return posts.map(post => {
-                    const memoryType = this.determineMemoryType(post.text);
+                    let memoryType = this.determineMemoryType(post.text);
+                    
+                    // Override type if we have a video
+                    if (post.videoPaths && post.videoPaths.length > 0) {
+                        memoryType = 'video';
+                    }
+                    
                     return {
                         date: post.date,
                         text: post.text,
+                        html: post.html,
                         memoryType: memoryType,
                         imagePaths: post.imagePaths,
+                        videoPaths: post.videoPaths,
                         rawDateText: post.rawDateText
                     };
                 });
@@ -845,22 +1087,54 @@
                 const card = document.createElement('div');
                 card.className = 'memory-card';
                 
-                let imageHtml = '';
-                if (memory.imagePaths && memory.imagePaths.length > 0) {
-                    // Try to use the first image path directly
+                console.log('Creating memory card:', {
+                    type: memory.memoryType,
+                    hasVideo: memory.videoPaths && memory.videoPaths.length > 0,
+                    hasImage: memory.imagePaths && memory.imagePaths.length > 0,
+                    videoPaths: memory.videoPaths,
+                    imagePaths: memory.imagePaths
+                });
+                
+                let mediaHtml = '';
+                
+                // Handle videos
+                if (memory.videoPaths && memory.videoPaths.length > 0) {
+                    const videoPath = memory.videoPaths[0];
+                    const thumbnailPath = memory.imagePaths && memory.imagePaths.length > 0 ? memory.imagePaths[0] : '';
+                    
+                    console.log(`Video memory - videoPath: ${videoPath}, thumbnailPath: ${thumbnailPath}`);
+                    
+                    if (thumbnailPath) {
+                        mediaHtml = `
+                            <div class="memory-image video-preview">
+                                <img src="${thumbnailPath}" alt="Video preview" class="clickable-video" data-video-path="${videoPath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div class="video-play-overlay">▶</div>
+                                <div class="image-placeholder" style="display: none;">🎥 Video not found</div>
+                            </div>
+                        `;
+                    } else {
+                        mediaHtml = `
+                            <div class="memory-image video-preview">
+                                <div class="video-placeholder clickable-video" data-video-path="${videoPath}">
+                                    <div class="video-play-overlay">▶</div>
+                                    🎥 Click to play video
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                // Handle regular images
+                else if (memory.imagePaths && memory.imagePaths.length > 0) {
                     const imagePath = memory.imagePaths[0];
-                    imageHtml = `
+                    mediaHtml = `
                         <div class="memory-image">
-                            <img src="${imagePath}" alt="Memory" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <img src="${imagePath}" alt="Memory" class="clickable-image" data-image-path="${imagePath}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                             <div class="image-placeholder" style="display: none;">📷 Image not found</div>
                         </div>
                     `;
                 } else {
-                    imageHtml = `
-                        <div class="memory-image">
-                            <div class="image-placeholder">📷 No image available</div>
-                        </div>
-                    `;
+                    // If no media, do not include the media section, and add a class to the card
+                    card.classList.add('no-image');
                 }
                 
                 card.innerHTML = `
@@ -868,9 +1142,9 @@
                         <div class="memory-date">${memory.date}</div>
                         <div class="memory-type ${memory.memoryType}">${memory.memoryType}</div>
                     </div>
-                    ${imageHtml}
+                    ${mediaHtml}
                     <div class="memory-content">
-                        <div class="memory-text">${memory.text}</div>
+                        <div class="memory-text">${memory.html || memory.text}</div>
                     </div>
                 `;
                 
@@ -912,7 +1186,145 @@
                 this.filteredMemories.forEach(memory => {
                     const card = this.createMemoryCard(memory);
                     this.memoriesGrid.appendChild(card);
+                    
+                    // Add click handlers for links within the card
+                    this.setupLinkHandlers(card);
                 });
+            }
+
+            setupLinkHandlers(card) {
+                const links = card.querySelectorAll('a');
+                links.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const href = link.getAttribute('href');
+                        if (href) {
+                            // Handle relative URLs within the Facebook archive
+                            if (href.startsWith('http')) {
+                                // External link - open in new tab
+                                window.open(href, '_blank');
+                            } else {
+                                // Local file - try to open it
+                                this.openLocalFile(href);
+                            }
+                        }
+                    });
+                });
+
+                // Setup image click handlers for modal
+                const images = card.querySelectorAll('.clickable-image');
+                images.forEach(img => {
+                    img.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const imagePath = img.getAttribute('data-image-path');
+                        if (imagePath) {
+                            this.openImageModal(imagePath);
+                        }
+                    });
+                });
+
+                // Setup video click handlers
+                const videos = card.querySelectorAll('.clickable-video');
+                videos.forEach(video => {
+                    video.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const videoPath = video.getAttribute('data-video-path');
+                        if (videoPath) {
+                            this.playVideo(videoPath);
+                        }
+                    });
+                });
+            }
+
+            openLocalFile(filePath) {
+                // Try to open the local file
+                // Since we can't directly open local files due to browser security,
+                // we'll show a message with the path
+                const message = `Local file path: ${filePath}\n\nTo view this file, you can:\n1. Navigate to it manually in your file explorer\n2. Open it in your browser by dragging and dropping\n3. Copy the path and open it directly`;
+                alert(message);
+            }
+
+            openImageModal(imagePath) {
+                const modal = document.getElementById('image-modal');
+                const modalImage = document.getElementById('modal-image');
+                const closeBtn = document.getElementById('close-modal');
+                
+                modalImage.src = imagePath;
+                modal.style.display = 'block';
+                
+                // Close modal when clicking the close button
+                closeBtn.onclick = () => {
+                    modal.style.display = 'none';
+                };
+                
+                // Close modal when clicking outside the image
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                };
+                
+                // Close modal with Escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && modal.style.display === 'block') {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+
+            playVideo(videoPath) {
+                // Create a video modal similar to the image modal
+                const modal = document.getElementById('image-modal');
+                const modalContent = modal.querySelector('.modal-content');
+                const closeBtn = document.getElementById('close-modal');
+                
+                // Replace the image with a video element
+                modalContent.innerHTML = `
+                    <span class="close-btn" id="close-modal">&times;</span>
+                    <video id="modal-video" controls autoplay style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                        <source src="${videoPath}" type="video/mp4">
+                        <p>Your browser doesn't support video playback. <a href="${videoPath}" target="_blank">Download the video</a></p>
+                    </video>
+                `;
+                
+                modal.style.display = 'block';
+                
+                // Re-setup close handlers for the new close button
+                const newCloseBtn = document.getElementById('close-modal');
+                newCloseBtn.onclick = () => {
+                    modal.style.display = 'none';
+                    // Reset modal content back to image structure
+                    modalContent.innerHTML = `
+                        <span class="close-btn" id="close-modal">&times;</span>
+                        <img id="modal-image" src="" alt="Full size image">
+                    `;
+                };
+                
+                // Close modal when clicking outside the video
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                        // Reset modal content back to image structure
+                        modalContent.innerHTML = `
+                            <span class="close-btn" id="close-modal">&times;</span>
+                            <img id="modal-image" src="" alt="Full size image">
+                        `;
+                    }
+                };
+                
+                // Close modal with Escape key
+                const escapeHandler = (e) => {
+                    if (e.key === 'Escape' && modal.style.display === 'block') {
+                        modal.style.display = 'none';
+                        // Reset modal content back to image structure
+                        modalContent.innerHTML = `
+                            <span class="close-btn" id="close-modal">&times;</span>
+                            <img id="modal-image" src="" alt="Full size image">
+                        `;
+                        document.removeEventListener('keydown', escapeHandler);
+                    }
+                };
+                document.addEventListener('keydown', escapeHandler);
             }
 
             updateStats() {
